@@ -15,6 +15,9 @@ namespace DemoINtroAsync
         {
             pictureBox1.Visible = true;
 
+            Console.WriteLine("Inicio");
+            List<Imagen> imagenes = ObtnerImagenes();
+
             var sw = new Stopwatch();
 
             sw.Start();
@@ -24,19 +27,46 @@ namespace DemoINtroAsync
             //var nombre = await ProcesamientoLargo();
             //MessageBox.Show($"Saludos, {nombre}");
 
-            var tareas = new List<Task>()
-          {
-                 RealizarProcesamientoLargoA(),
-                 RealizarProcesamientoLargoB(),
-                 RealizarProcesamientoLargoC(),
-        };
+            //    var tareas = new List<Task>()
+            //  {
+            //         RealizarProcesamientoLargoA(),
+            //         RealizarProcesamientoLargoB(),
+            //         RealizarProcesamientoLargoC(),
+            //};
 
-            await Task.WhenAll(tareas);
+            //await Task.WhenAll(tareas);
+
+            var directorioActual = AppDomain.CurrentDomain.BaseDirectory;
+            var destinoBaseSecuencial = Path.Combine(directorioActual, @"Imagenes\resultado-secuencial");
+            var destinoBaseParalelo = Path.Combine(directorioActual, @"Imagenes\resultado-paralelo");
+            PrepararEjecucion(destinoBaseParalelo, destinoBaseSecuencial);
+
+            //Parte Secuencial:
+            foreach (var imagen in imagenes)
+            {
+                await ProcesarImagen(destinoBaseSecuencial, imagen);
+            }
+
+            Console.WriteLine($"Secuencial - duración en segundos: {sw.ElapsedMilliseconds / 1000.0}");
+
+            sw.Restart();
+
+            sw.Start();
+
+            var tareaEnumerable = imagenes.Select(async imagen =>
+            {
+                await ProcesarImagen(destinoBaseParalelo, imagen);
+            });
+
+            await Task.WhenAll(tareaEnumerable);
+
+            Console.WriteLine($"Paralelo - duración en segundos: : {sw.ElapsedMilliseconds / 1000.0}");
+
 
             sw.Stop();
 
-            var duracion = $"El progrmama se ejecutó en {sw.ElapsedMilliseconds / 1000.0} segundos.";
-            Console.WriteLine(duracion);
+            //var duracion = $"El progrmama se ejecutó en {sw.ElapsedMilliseconds / 1000.0} segundos.";
+            //Console.WriteLine(duracion);
 
             pictureBox1.Visible = false;
         }
@@ -46,14 +76,16 @@ namespace DemoINtroAsync
             var respuesta = await httpClient.GetAsync(imagen.URL);
             var contenido = await respuesta.Content.ReadAsByteArrayAsync();
 
-            Bitmap bitmap = null;
+            Bitmap bitmap;
 
             using (var ms = new MemoryStream(contenido))
             {
-                bitmap!.RotateFlip(RotateFlipType.Rotate90FlipNone);
-                var destino = Path.Combine(directorio, imagen.Nombre);
-                bitmap.Save(destino);
+                bitmap = new Bitmap(ms);
             }
+
+            bitmap.RotateFlip(RotateFlipType.Rotate90FlipNone);
+            var destino = Path.Combine(directorio, imagen.Nombre);
+            bitmap.Save(destino);
         }
 
         private static List<Imagen> ObtnerImagenes()
@@ -64,19 +96,19 @@ namespace DemoINtroAsync
             {
                 imaganes.Add(new Imagen()
                 {
-                    Nombre = $"Bolívar {i}.jpg",
+                    Nombre = $"Bolívar{i}.jpg",
                     URL = "https://upload.wikimedia.org/wikipedia/commons/c/c4/Bol%C3%ADvar_en_Carabobo.jpg",
                 });
 
                 imaganes.Add(new Imagen()
                 {
-                    Nombre = $"Parque Arqueológico de San Agustín {i}.jpg",
+                    Nombre = $"Parque Arqueológico de San Agustín{i}.jpg",
                     URL = "https://upload.wikimedia.org/wikipedia/commons/4/4c/Parque_Arqueol%C3%B3gico_de_San_Agust%C3%ADn_-_tomb_of_a_deity_with_supporting_warriors.jpg",
                 });
 
                 imaganes.Add(new Imagen()
                 {
-                    Nombre = $"Gold Museum {i}.jpg",
+                    Nombre = $"Gold Museum{i}.jpg",
                     URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Gold_Museum%2C_Bogota_%2836145671394%29.jpg",
                 });
             }
