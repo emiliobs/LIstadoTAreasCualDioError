@@ -4,6 +4,8 @@ namespace DemoINtroAsync
 {
     public partial class Form1 : Form
     {
+
+        HttpClient httpClient = new HttpClient();
         public Form1()
         {
             InitializeComponent();
@@ -22,9 +24,14 @@ namespace DemoINtroAsync
             //var nombre = await ProcesamientoLargo();
             //MessageBox.Show($"Saludos, {nombre}");
 
-            await RealizarProcesamientoLargoA();
-            await RealizarProcesamientoLargoB();
-            await RealizarProcesamientoLargoC();
+            var tareas = new List<Task>()
+          {
+                 RealizarProcesamientoLargoA(),
+                 RealizarProcesamientoLargoB(),
+                 RealizarProcesamientoLargoC(),
+        };
+
+            await Task.WhenAll(tareas);
 
             sw.Stop();
 
@@ -33,6 +40,77 @@ namespace DemoINtroAsync
 
             pictureBox1.Visible = false;
         }
+
+        private async Task ProcesarImagen(string directorio, Imagen imagen)
+        {
+            var respuesta = await httpClient.GetAsync(imagen.URL);
+            var contenido = await respuesta.Content.ReadAsByteArrayAsync();
+
+            Bitmap bitmap = null;
+
+            using (var ms = new MemoryStream(contenido))
+            {
+                bitmap!.RotateFlip(RotateFlipType.Rotate90FlipNone);
+                var destino = Path.Combine(directorio, imagen.Nombre);
+                bitmap.Save(destino);
+            }
+        }
+
+        private static List<Imagen> ObtnerImagenes()
+        {
+            var imaganes = new List<Imagen>();
+
+            for (int i = 0; i < 10; i++)
+            {
+                imaganes.Add(new Imagen()
+                {
+                    Nombre = $"Bolívar {i}.jpg",
+                    URL = "https://upload.wikimedia.org/wikipedia/commons/c/c4/Bol%C3%ADvar_en_Carabobo.jpg",
+                });
+
+                imaganes.Add(new Imagen()
+                {
+                    Nombre = $"Parque Arqueológico de San Agustín {i}.jpg",
+                    URL = "https://upload.wikimedia.org/wikipedia/commons/4/4c/Parque_Arqueol%C3%B3gico_de_San_Agust%C3%ADn_-_tomb_of_a_deity_with_supporting_warriors.jpg",
+                });
+
+                imaganes.Add(new Imagen()
+                {
+                    Nombre = $"Gold Museum {i}.jpg",
+                    URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Gold_Museum%2C_Bogota_%2836145671394%29.jpg",
+                });
+            }
+
+            return imaganes;
+        }
+
+        private void BorrandoArchivos(string directorio)
+        {
+            var archivos = Directory.EnumerateFiles(directorio);
+
+            foreach (var archivo in archivos)
+            {
+                File.Delete(archivo);
+            }
+        }
+
+        private void PrepararEjecucion(string destinoBaseParalelo, string destinoBaseSecuencial)
+        {
+            if (!Directory.Exists(destinoBaseParalelo))
+            {
+                Directory.CreateDirectory(destinoBaseParalelo);
+            }
+
+            if (!Directory.Exists(destinoBaseSecuencial))
+            {
+                Directory.CreateDirectory(destinoBaseSecuencial);
+            }
+
+            BorrandoArchivos(destinoBaseSecuencial);
+            BorrandoArchivos(destinoBaseParalelo);
+        }
+
+
 
         public async Task<string> ProcesamientoLargo()
         {
